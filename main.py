@@ -9,8 +9,8 @@ COMPANY_NAME = "Tesla Inc"
 
 
 ##Twilio Setup
-account_sid = os.environ('TWILIO_ACCOUNT_SID')
-auth_token = os.environ('TWILIO_AUTH_TOKEN')
+account_sid = os.environ['TWILIO_ACCOUNT_SID']
+auth_token = os.environ['TWILIO_AUTH_TOKEN']
 client = Client(account_sid=account_sid, auth_token=auth_token)
 
 #Move this down later
@@ -22,7 +22,7 @@ client = Client(account_sid=account_sid, auth_token=auth_token)
 #     )
 
 ##avantage setup
-avantage_key = os.environ('ALPHAAVANTAGE_KEY')
+avantage_key = os.environ['ALPHAAVANTAGE_KEY']
 
 print(avantage_key)
 
