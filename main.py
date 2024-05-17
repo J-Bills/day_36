@@ -1,35 +1,107 @@
 import requests
-import pandas as pd
-import json
+from newsapi import NewsApiClient
 from twilio.rest import Client
 import os
+import datetime as dt
 
 STOCK = "TSLA"
-COMPANY_NAME = "Tesla Inc"
+COMPANY_NAME = "Tesla"
+
+Percentage = 5
+
+def check_stock():
+    stock_parameters = {
+        'function':'TIME_SERIES_DAILY',
+        'symbol':STOCK,
+        'apikey':avantage_key
+    }
+
+    avantage_key = os.environ['ALPHAVANTAGE_KEY']
+    response = requests.get(url='https://www.alphavantage.co/query',params=stock_parameters)
+    response.raise_for_status()
+    data = response.json()
 
 
-##Twilio Setup
-account_sid = os.environ['TWILIO_ACCOUNT_SID']
-auth_token = os.environ['TWILIO_AUTH_TOKEN']
-client = Client(account_sid=account_sid, auth_token=auth_token)
+    today = dt.date.today()
+    target_days = list()
+    for i in range(1,3):
+        date = today - dt.timedelta(days=i)
+        target_days.append(str(date))
 
-#Move this down later
-# message = client.messages \
-#     .create(
-#         body='This is the ship that made the Kessel Run in fourteen parsecs?',
-#         from_='+15017122661',
-#         to='+15558675310'
-#     )
+    target_data = dict()
+    dates = data['Time Series (Daily)']
+    for date,val in dates.items():
+        if date in target_days:
+            target_data[date] = val
 
-##avantage setup
-avantage_key = os.environ['ALPHAAVANTAGE_KEY']
+    yesterday_open_data = float(target_data[target_days[0]]['1. open'])
+    db4yesterday_open_data = float(target_data[target_days[1]]['1. open'])
 
-print(avantage_key)
+    percentage_val = round(((yesterday_open_data - db4yesterday_open_data)/db4yesterday_open_data) * 100,2)
+    Percentage = percentage_val
+    if percentage_val > 5.00 or percentage_val < -5.00:
+        return True
 
+##News API Setup
+def get_news():
+    newsapi_key = os.environ["NEWS_KEY"]
+    
+    news_parameters = {
+    'q':COMPANY_NAME,
+    'apiKey':newsapi_key,
+    'language':'en',
+    "category":"business",
+    }
+    
+    response  = requests.get('https://newsapi.org/v2/top-headlines',params=news_parameters)
+    response.raise_for_status()
 
+    data = response.json()
 
-## STEP 1: Use https://www.alphavantage.co
-# When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
+    headlines = dict()
+    articles = data.get('articles')
+    try:
+        for article in articles:
+            headlines.update({article['title']:article['description']})
+    except IndexError:
+        pass
+    return headlines
+
+def send_message(headlines):
+    account_sid = os.environ['TWILIO_ACCOUNT_SID']
+    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    twilio_num = os.environ['TWILIO_NUM']
+    client = Client(account_sid, auth_token)
+    
+    text_info=''
+    
+    percent_string = f"{STOCK}: {Percentage}% \n"
+    for key,value in headlines.items():
+        text_info += f'Headline:{key} \n Brief:{value} \n'
+        
+
+    full_text = percent_string + text_info
+
+    message = client.messages \
+        .create(
+            body=full_text,
+            from_=twilio_num,
+            to='+11111111'
+        )
+    
+    print(full_text)
+    
+    
+    
+def main():
+    val = check_stock
+    if (val):
+        news = get_news()
+        send_message(news)
+    
+main()
+    
+
 
 ## STEP 2: Use https://newsapi.org
 # Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME. 
